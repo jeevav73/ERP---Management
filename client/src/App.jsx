@@ -340,7 +340,7 @@ function App() {
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
-      <BrowserRouter>
+      <BrowserRouter   basename="/ERP---Management">
         <Routes>
           {/* ── Public routes ── */}
           <Route path="/" element={<Login />} />
