@@ -166,10 +166,16 @@ export default function AddEmployeeModal({ initialHrCandidate = null, onClose } 
     try {
       // Dispatch and wait for the async thunk result
       const result = await dispatch(addEmployee(newEmployee));
-      
+
       // Check if the action was rejected
       if (result.type.endsWith('/rejected')) {
-        alert(`❌ Error: ${result.payload || 'Failed to save employee'}`);
+        const errorMessage =
+          result.payload?.message ||
+          result.payload?.error ||
+          result.error?.message ||
+          'Failed to save employee';
+
+        alert(`❌ Error: ${errorMessage}`);
         return;
       }
       
@@ -530,11 +536,11 @@ export default function AddEmployeeModal({ initialHrCandidate = null, onClose } 
               <div>
                 <label className={labelClass}>Contact Mobile</label>
                 <div className="flex gap-2">
-                                    <select
-                    name="mobileCountryCode"
-                    value={formData.mobileCountryCode}
+                  <select
+                    name="emmobileCountryCode"
+                    value={formData.emmobileCountryCode}
                     onChange={handleCountryCodeChange}
-                    
+                    className={selectClass}
                   >
                     {[
                       { label: "+91 India", value: "+91" },
@@ -548,25 +554,7 @@ export default function AddEmployeeModal({ initialHrCandidate = null, onClose } 
                       </option>
                     ))}
                   </select>
-                  {/* <select
-                    name="emmobileCountryCode"
-                    value={formData.emmobileCountryCode}
-                    onChange={handleCountryCodeChange}
-                    className={`${inputClass} `}
-                  >
-                    {[
-                      { label: "+91 India", value: "+91" },
-                      { label: "+1 USA", value: "+1" },
-                      { label: "+44 UK", value: "+44" },
-                      { label: "+61 AU", value: "+61" },
-                      { label: "+971 UAE", value: "+971" },
-                    ].map((code) => (
-                      <option key={code.value} value={code.value}>
-                        {code.label}
-                      </option>
-                    ))}
-                  </select> */}
-                  {/* <input
+                  <input
                     type="tel"
                     name="emmobile"
                     value={formData.emmobile}
@@ -574,21 +562,11 @@ export default function AddEmployeeModal({ initialHrCandidate = null, onClose } 
                     placeholder="10 digit number"
                     inputMode="numeric"
                     maxLength={10}
-                    className={`${inputClass} flex-[-3] ${errors.emmobile ? "border-red-500" : ""}`}
-                  /> */}
-                                    <input
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile}
-                    onChange={handleInputChange}
-                    placeholder="10 digit number"
-                    inputMode="numeric"
-                    maxLength={10}
-                    className={`${inputClass} flex-1 ${errors.mobile ? "border-red-500" : ""}`}
+                    className={`${inputClass} flex-1 ${errors.emmobile ? "border-red-500" : ""}`}
                   />
                 </div>
                 {errors.emmobile && (
-                  <p className="text-red-500 text-xs mt-">{errors.emmobile}</p>
+                  <p className="text-red-500 text-xs mt-1">{errors.emmobile}</p>
                 )}
               </div>
               <div>
