@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy client
 
 on:
   push:
@@ -24,11 +24,11 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: client
         run: npm install
 
       - name: Build
-        working-directory: frontend
+        working-directory: client
         env:
           VITE_API_URL: https://erp-management-sm4i.onrender.com
         run: npm run build
@@ -42,7 +42,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
