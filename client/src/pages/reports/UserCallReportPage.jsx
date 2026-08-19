@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../../services/api';
-import UserCallReport from '../../components/calls/Usercallreport';
+import UserCallReport from '../../components/calls/UserCallReport';
 import Sidebar from '../../components/dashboards/Sidebar';
 
 export default function UserCallReportPage() {

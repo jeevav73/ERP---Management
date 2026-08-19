@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../../services/api';
-import UserLoginReport from '../../components/calls/Userloginreport';
+import UserLoginReport from '../../components/calls/UserLoginReport';
 import Sidebar from '../../components/dashboards/Sidebar';
 
 export default function UserLoginReportPage() {
