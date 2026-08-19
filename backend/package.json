@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node server.js",
-    "start": "nodemon server.js",
+    "start": "node server.js",
     "view-db": "node scripts/viewDb.js"
   },
   "dependencies": {
