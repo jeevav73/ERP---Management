@@ -157,6 +157,132 @@ router.post('/', async (req, res) => {
   }
 });
 
+const validateEnquiryFields = (enquiryData = {}) => {
+  const requiredFields = ['elderName', 'phone'];
+  const missing = requiredFields.filter((field) => {
+    const value = enquiryData[field];
+    return value === undefined || value === null || String(value).trim() === '';
+  });
+
+  return missing;
+};
+
+const buildEnquiryPayload = (enquiryData = {}) => {
+  const payload = { ...enquiryData };
+
+  if (payload.phone) {
+    payload.phone = String(payload.phone).trim();
+  }
+
+  if (payload.aadhaar) {
+    payload.aadhaar = String(payload.aadhaar).replace(/\D/g, '').slice(0, 12);
+  }
+
+  if (payload.careType) {
+    payload.careType = getStringValue(payload.careType);
+  }
+
+  if (payload.lead || payload.source) {
+    payload.lead = getStringValue(payload.source || payload.lead);
+  }
+
+  if (payload.timeline) {
+    payload.timeline = Array.isArray(payload.timeline) ? payload.timeline : [payload.timeline];
+  }
+
+  return payload;
+};
+
+const createSingleEnquiry = async (rawEnquiryData = {}) => {
+  const enquiryData = buildEnquiryPayload(rawEnquiryData);
+
+  const missingFields = validateEnquiryFields(enquiryData);
+  if (missingFields.length > 0) {
+    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+  }
+
+  const { phone, aadhaar, elderName, stage } = enquiryData;
+  let clientId = null;
+
+  if (phone && aadhaar) {
+    const existingClient = await Enquiry.findOne({ phone, aadhaar }).sort({ createdAt: -1 });
+    if (existingClient) {
+      clientId = existingClient.clientId;
+    }
+  }
+
+  const newEntry = new Enquiry({
+    ...enquiryData,
+    clientId,
+    elderName,
+    familyName: enquiryData.familyName || null,
+    phone,
+    aadhaar: aadhaar || null,
+    email: enquiryData.email || null,
+    personalDetails: enquiryData.personalDetails || {},
+    stageDetails: enquiryData.stageDetails || {},
+    assignedTo: enquiryData.assignedTo || null,
+    assignedAt: enquiryData.assignedAt ? new Date(enquiryData.assignedAt) : null,
+    careType: getStringValue(enquiryData.careType),
+    lead: getStringValue(enquiryData.source || enquiryData.lead),
+    stage: stage || 'New Enquiry',
+    notes: enquiryData.notes || '',
+    timeline: [{
+      event: `Stage Recorded: ${stage || 'New Enquiry'}`,
+      date: new Date().toISOString(),
+    }, ...(enquiryData.timeline || [])],
+  });
+
+  await newEntry.save();
+  return newEntry;
+};
+
+router.post('/bulk', async (req, res) => {
+  try {
+    const enquiryList = Array.isArray(req.body) ? req.body : [req.body];
+
+    if (enquiryList.length === 0) {
+      return res.status(400).json({ message: 'Bulk enquiry list is empty' });
+    }
+
+    const savedEnquiries = [];
+    const errors = [];
+
+    for (let index = 0; index < enquiryList.length; index += 1) {
+      const enquiry = enquiryList[index];
+
+      try {
+        const saved = await createSingleEnquiry(enquiry);
+        savedEnquiries.push(saved);
+      } catch (err) {
+        errors.push({
+          index,
+          message: err.message || 'Error saving enquiry',
+          enquiry,
+        });
+      }
+    }
+
+    if (savedEnquiries.length === 0) {
+      return res.status(400).json({
+        message: 'No enquiries were saved',
+        errors,
+      });
+    }
+
+    return res.status(201).json({
+      message: `Bulk enquiry import completed: ${savedEnquiries.length} saved`,
+      savedEnquiries,
+      errors: errors.length ? errors : undefined,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Error saving bulk enquiries',
+      error: err.message,
+    });
+  }
+});
+
 // 5. UPDATE enquiry by ID
 router.put('/:id', async (req, res) => {
   try {

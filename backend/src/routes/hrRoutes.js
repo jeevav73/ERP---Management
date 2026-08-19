@@ -15,102 +15,190 @@ const regexDigits = (digits) => {
   return digits.split('').join('\\D*');
 };
 
+const buildEmployeePayload = (employeeData = {}) => {
+  const employeePayload = {
+    ...employeeData,
+    recruiterHrId: employeeData.recruiterHrId || employeeData.hrId || employeeData.selectedHrId || "",
+    recruiterHrName: employeeData.recruiterHrName || employeeData.hrName || employeeData.selectedHrName || "",
+  };
+
+  delete employeePayload.recruiterHrContact;
+  delete employeePayload.recruiterHrDomain;
+  delete employeePayload.recruiterHrDetails;
+
+  return employeePayload;
+};
+
+const validateEmployeeFields = (employeeData = {}) => {
+  const requiredFields = [
+    "name",
+    "mobile",
+    "dept",
+    "service",
+    "role",
+    "doj",
+    "address",
+  ];
+
+  const missing = requiredFields.filter((field) => {
+    const value = employeeData[field];
+    return value === undefined || value === null || String(value).trim() === "";
+  });
+
+  return missing;
+};
+
+const createSingleEmployee = async (employeeData) => {
+  const employeePayload = buildEmployeePayload(employeeData);
+  const rawMobile = employeeData.mobile || '';
+  const rawAadhaar = employeeData.aadhaar || '';
+  const mobile = normalizeMobile(rawMobile);
+  const aadhaar = normalizeAadhaar(rawAadhaar);
+  const { dept } = employeeData;
+
+  const duplicateQueries = [];
+  if (mobile) {
+    const mobileRegex = new RegExp(`^\\D*${regexDigits(mobile)}\\D*$`);
+    duplicateQueries.push(
+      { mobile: rawMobile },
+      { mobile: `+91${mobile}` },
+      { mobile: `91${mobile}` },
+      { mobile: mobile },
+      { mobile: { $regex: mobileRegex } }
+    );
+  }
+  if (aadhaar) {
+    const aadhaarRegex = new RegExp(`^\\D*${regexDigits(aadhaar)}\\D*$`);
+    duplicateQueries.push(
+      { aadhaar: rawAadhaar },
+      { aadhaar: aadhaar },
+      { aadhaar: { $regex: aadhaarRegex } }
+    );
+  }
+
+  const existingEmployee = duplicateQueries.length > 0
+    ? await Employee.findOne({ $or: duplicateQueries })
+    : null;
+
+  if (existingEmployee) {
+    throw new Error("Employee already exists with this Mobile or Aadhaar number!");
+  }
+
+  const deptPrefixes = {
+    homecare: "HC",
+    healthcare: "HCC",
+    calls: "CL",
+    it: "IT",
+    nonit: "NIT",
+    labour: "LB"
+  };
+  const pfx = deptPrefixes[dept] || "EMP";
+
+  let generatedIdBase = null;
+  if (mobile) {
+    const last4 = mobile.slice(-4);
+    generatedIdBase = `EMP-${pfx}-M${last4}`;
+  } else if (aadhaar) {
+    const last4 = aadhaar.slice(-4);
+    generatedIdBase = `EMP-${pfx}-A${last4}`;
+  } else {
+    const count = await Employee.countDocuments({ dept });
+    const nextNumber = 100 + count + 1;
+    generatedIdBase = `EMP-${pfx}-${nextNumber}`;
+  }
+
+  let candidateId = generatedIdBase;
+  let suffix = 1;
+  while (await Employee.findOne({ id: candidateId })) {
+    candidateId = `${generatedIdBase}-${suffix}`;
+    suffix += 1;
+  }
+
+  const newEmployee = new Employee({
+    ...employeePayload,
+    id: candidateId,
+    status: "Present"
+  });
+
+  return await newEmployee.save();
+};
+
 // @route   POST /api/employees
 // @desc    Add new employee with Duplicate Check & Auto-ID
 router.post('/', async (req, res) => {
   try {
-    const employeePayload = {
-      ...req.body,
-      recruiterHrId: req.body.recruiterHrId || req.body.hrId || req.body.selectedHrId || "",
-      recruiterHrName: req.body.recruiterHrName || req.body.hrName || req.body.selectedHrName || "",
-    };
-    delete employeePayload.recruiterHrContact;
-    delete employeePayload.recruiterHrDomain;
-    delete employeePayload.recruiterHrDetails;
-
-    const rawMobile = req.body.mobile || '';
-    const rawAadhaar = req.body.aadhaar || '';
-    const mobile = normalizeMobile(rawMobile);
-    const aadhaar = normalizeAadhaar(rawAadhaar);
-    const { dept } = req.body;
-
-    const duplicateQueries = [];
-    if (mobile) {
-      const mobileRegex = new RegExp(`^\\D*${regexDigits(mobile)}\\D*$`);
-      duplicateQueries.push(
-        { mobile: rawMobile },
-        { mobile: `+91${mobile}` },
-        { mobile: `91${mobile}` },
-        { mobile: mobile },
-        { mobile: { $regex: mobileRegex } }
-      );
-    }
-    if (aadhaar) {
-      const aadhaarRegex = new RegExp(`^\\D*${regexDigits(aadhaar)}\\D*$`);
-      duplicateQueries.push(
-        { aadhaar: rawAadhaar },
-        { aadhaar: aadhaar },
-        { aadhaar: { $regex: aadhaarRegex } }
-      );
-    }
-
-    const existingEmployee = duplicateQueries.length > 0
-      ? await Employee.findOne({ $or: duplicateQueries })
-      : null;
-
-    if (existingEmployee) {
-      return res.status(400).json({ 
-        message: "Employee already exists with this Mobile or Aadhaar number!" 
+    const missingFields = validateEmployeeFields(req.body);
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: "Employee validation failed",
+        missingFields,
+        error: `Missing required fields: ${missingFields.join(', ')}`
       });
     }
 
-    // 2. Department Prefix mapping
-    const deptPrefixes = {
-      homecare: "HC",
-      healthcare: "HCC",
-      calls: "CL",
-      it: "IT",
-      nonit: "NIT",
-      labour: "LB"
-    };
-    const pfx = deptPrefixes[dept] || "EMP";
-
-    // 3. Auto-generate ID logic
-    // Prefer deriving from mobile or aadhaar for contact-driven roles (e.g., calls/telecaller)
-    let generatedIdBase = null;
-    if (mobile) {
-      const last4 = mobile.slice(-4);
-      generatedIdBase = `EMP-${pfx}-M${last4}`;
-    } else if (aadhaar) {
-      const last4 = aadhaar.slice(-4);
-      generatedIdBase = `EMP-${pfx}-A${last4}`;
-    } else {
-      const count = await Employee.countDocuments({ dept });
-      const nextNumber = 100 + count + 1;
-      generatedIdBase = `EMP-${pfx}-${nextNumber}`;
-    }
-
-    // Ensure uniqueness by appending an incrementing suffix if needed
-    let candidateId = generatedIdBase;
-    let suffix = 1;
-    while (await Employee.findOne({ id: candidateId })) {
-      candidateId = `${generatedIdBase}-${suffix}`;
-      suffix += 1;
-    }
-
-    // 4. Create and Save
-    const newEmployee = new Employee({ 
-      ...employeePayload, 
-      id: candidateId,
-      status: "Present" 
-    });
-    console.log("✅ Saving Employee with ID:", newEmployee );
-    const savedEmployee = await newEmployee.save();
+    const savedEmployee = await createSingleEmployee(req.body);
     res.status(201).json(savedEmployee);
-    console.log("✅ Employee Saved:", savedEmployee);
-
   } catch (err) {
-    res.status(500).json({ message: "Error saving employee", error: err.message });
+    const message = err.message || "Error saving employee";
+    res.status(400).json({ message, error: message });
+  }
+});
+
+// @route   POST /api/hr/bulk
+// @desc    Add multiple employees in one request
+router.post('/bulk', async (req, res) => {
+  try {
+    const employeeList = Array.isArray(req.body) ? req.body : [req.body];
+
+    if (employeeList.length === 0) {
+      return res.status(400).json({ message: "Bulk employee list is empty" });
+    }
+
+    const savedEmployees = [];
+    const errors = [];
+
+    for (let index = 0; index < employeeList.length; index += 1) {
+      const employee = employeeList[index];
+      const missingFields = validateEmployeeFields(employee);
+
+      if (missingFields.length > 0) {
+        errors.push({
+          index,
+          message: `Missing required fields: ${missingFields.join(', ')}`,
+          employee,
+        });
+        continue;
+      }
+
+      try {
+        const savedEmployee = await createSingleEmployee(employee);
+        savedEmployees.push(savedEmployee);
+      } catch (err) {
+        errors.push({
+          index,
+          message: err.message || "Error saving employee",
+          employee,
+        });
+      }
+    }
+
+    if (savedEmployees.length === 0) {
+      return res.status(400).json({
+        message: "No employees were saved",
+        errors,
+      });
+    }
+
+    return res.status(201).json({
+      message: `Bulk employee import completed: ${savedEmployees.length} saved`,
+      savedEmployees,
+      errors: errors.length ? errors : undefined,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Error saving bulk employees",
+      error: err.message,
+    });
   }
 });
 
