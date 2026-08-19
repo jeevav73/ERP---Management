@@ -18,7 +18,8 @@ import { HR_DEPT_CONFIG, fetchEmployees } from "../features/hrSlice";
 import { fetchAllUpdates } from "../features/workUpdateSlice";
 
 const API = import.meta.env.VITE_API_URL;
-const API_ROOT = (API || "http://localhost:8000").replace(/\/api\/?$/, "").replace(/\/$/, "");
+// const API_ROOT = (API || "http://localhost:8000").replace(/\/api\/?$/, "").replace(/\/$/, "");
+const API_ROOT = (API || "https://erp-management-sm4i.onrender.com").replace(/\/api\/?$/, "").replace(/\/$/, "")
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const PRIORITY = {

@@ -3,7 +3,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { showToast } from "../utils/toast"; // 👈 import showToast
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "https://erp-management-sm4i.onrender.com";
 
 export default function Login() {
     const [email, setEmail] = useState("");

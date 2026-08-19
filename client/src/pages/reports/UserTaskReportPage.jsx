@@ -3,7 +3,8 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import Sidebar from '../../components/dashboards/Sidebar';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://erp-management-sm4i.onrender.com';
 
 const normalizePhone = (v = '') => String(v).replace(/\D/g, '').replace(/^91/, '');
 

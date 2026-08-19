@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://erp-management-sm4i.onrender.com' ;
 
 export default function WhatsAppPrefillModal({ open, onClose }) {
   const [name, setName] = useState('');

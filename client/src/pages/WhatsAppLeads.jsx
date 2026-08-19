@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from "../components/dashboards/Sidebar";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://erp-management-sm4i.onrender.com';
 
 export default function WhatsAppLeads() {
   const [leads, setLeads] = useState([]);

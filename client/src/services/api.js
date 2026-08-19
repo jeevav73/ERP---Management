@@ -2,7 +2,9 @@ import axios from "axios";
 
 // Compute a normalized base URL that always ends with a single `/api` segment.
 const rawEnvUrl = import.meta.env.VITE_API_URL;
-const envUrl = typeof rawEnvUrl === "string" && rawEnvUrl.trim() ? rawEnvUrl.trim() : "http://localhost:8000";
+// const envUrl = typeof rawEnvUrl === "string" && rawEnvUrl.trim() ? rawEnvUrl.trim() : "http://localhost:8000";
+
+const envUrl = typeof rawEnvUrl === "string" && rawEnvUrl.trim() ? rawEnvUrl.trim() : "https://erp-management-sm4i.onrender.com";
 const normalized = (() => {
   const u = envUrl.replace(/\/$/, "");
   if (u.endsWith("/api")) return u;
@@ -10,7 +12,8 @@ const normalized = (() => {
 })();
 
 if (!rawEnvUrl || !rawEnvUrl.trim()) {
-  console.warn("VITE_API_URL is not set. Defaulting API base URL to http://localhost:8000/api");
+  // console.warn("VITE_API_URL is not set. Defaulting API base URL to http://localhost:8000/api");
+  console.warn("VITE_API_URL is not set. Defaulting API base URL to https://erp-management-sm4i.onrender.com/api");
 }
 console.log("API baseURL ->", normalized);
 const API = axios.create({ baseURL: normalized });
